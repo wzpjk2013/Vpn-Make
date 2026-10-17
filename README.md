@@ -51,12 +51,20 @@
 规则集（[MetaCubeX/meta-rules-dat](https://github.com/MetaCubeX/meta-rules-dat)），
 全部经 `proxy:` 字段走代理下载，绕开 `cdn.jsdelivr.net` 在国内的抖动。
 
-- 分类交给上游持续维护，规则条数 9582 → 1129，订阅体积 471 KB → 80 KB（gzip 后 10 KB）
+- 分类交给上游持续维护，规则条数 9582 → 1129，订阅体积 471 KB → 82 KB（gzip 后 10.7 KB）
 - `apple@cn` / `google@cn` / `microsoft@cn` / `steam@cn` 等**中国区子集必须先匹配直连**，
   顺序颠倒就会把国内服务推上代理
 - 兜底链：精细分类 → `cn` 直连 → `geolocation-!cn` 代理 → `GEOIP,CN` 直连 → `MATCH`
-- DNS 用国内 DoH 主查 + **经代理的境外 DoH** 兜底（`https://dns.google/dns-query#🚀 节点选择`），
-  这是「该走代理的打不开」的真正解药
+
+**DNS 做两层防泄漏**（细节见 §E.2）：
+
+- `fake-ip-filter-mode: rule` —— 国内域名下发 `real-ip`（直连正确、`GEOIP,CN` 可用），
+  其余下发 `fake-ip`，客户端拿不到境外域名的真实 IP。没有这个开关就只能二选一
+- `nameserver-policy` 用 `rule-set:` 前缀**直接引用本文件的 38 个 provider** 做分域，
+  境外查询写成 `tls://8.8.8.8:853#🚀 节点选择`，DNS 请求本身从代理出去
+
+这套配置是渐进增强的：不开 TUN 时第一层不介入，但第二层照常工作，污染已修好；
+开了 TUN 才彻底关掉客户端侧的泄漏面。
 
 细节见 §E.1 / §E.2。
 
