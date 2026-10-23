@@ -12,7 +12,7 @@
 | 部署步骤 | §3 – §16 | 从空白 Ubuntu 24.04 到可用服务的每一步、命令、预期输出、验证方法 |
 | AI Agent 部署规程 | §0.1 | 12 项必问清单、9 道验证闸门、7 条失败红线、可跳过组件 |
 | 全部配套源码 | 附录 D | Web 面板、带宽整形、安装/回滚脚本、84 项本地自测（逐行收录） |
-| 完整订阅模板 | 附录 E | 15 个节点 + 14 个策略组 + 39 个 mrs 规则集 + 1130 条分流规则（1966 行） |
+| 完整订阅模板 | 附录 E | 15 个节点 + 14 个策略组 + 38 个 mrs 规则集 + 1129 条分流规则（1958 行） |
 
 **文档是自包含的**——不需要另外去拿任何文件，也不需要访问原始服务器。
 
@@ -49,24 +49,27 @@ mark 机制（为什么 bit0 留给 WARP、为什么必须写 `1/1` 掩码）、
 | **订阅分发** | 由面板在 :2083 提供，gzip 压缩，标准 `Subscription-Userinfo` 头 |
 | **证书续签** | Let's Encrypt DNS-01（Cloudflare API），certbot 自动续期，签发后自动部署并重载 Xray 与面板 |
 | **fail2ban** | SSH 爆破防护，ipset 模式（封几百个 IP 规则数恒定） |
-| **分流规则** | mihomo `rule-providers` + mrs 规则集，39 个分类；境外域名由 `geolocation-!cn` 兜底 |
+| **分流规则** | mihomo `rule-providers` + mrs 规则集，38 个分类；境外域名由 `geolocation-!cn` 兜底 |
 
 ## 分流与 DNS
 
-订阅模板的分流不是手写列表，而是 **mihomo 原生规则集**：39 个 `format: mrs` 的远端
+订阅模板的分流不是手写列表，而是 **mihomo 原生规则集**：38 个 `format: mrs` 的远端
 规则集（[MetaCubeX/meta-rules-dat](https://github.com/MetaCubeX/meta-rules-dat)），
 全部经 `proxy:` 字段走代理下载，绕开 `cdn.jsdelivr.net` 在国内的抖动。
 
-- 分类交给上游持续维护，规则条数 9582 → 1130，订阅体积 471 KB → 79.5 KB（gzip 后 10.4 KB）
-- `apple@cn` / `google@cn` / `microsoft@cn` / `steam@cn` 等**中国区子集必须先匹配直连**，
+- 分类交给上游持续维护，规则条数 9582 → 1129，订阅体积 471 KB → 79.5 KB（gzip 后 10.4 KB）
+- `apple@cn` / `microsoft@cn` / `steam@cn` 等**中国区子集必须先匹配直连**，
   顺序颠倒就会把国内服务推上代理
+- `google@cn` 已于 2026-10-23 移除：该集合把 `google.cn` / `googleapis.cn` / `gstatic.cn`
+  整体送去直连，与「Google 全部过代理」的预期冲突。现在 Google 域名统一落到
+  `RULE-SET,google → 🚀 节点选择`
 - 兜底链：精细分类 → `cn` 直连 → `geolocation-!cn` 代理 → `GEOIP,CN` 直连 → `MATCH`
 
 **DNS 做两层防泄漏**（细节见 §E.2）：
 
 - `fake-ip-filter-mode: rule` —— 国内域名下发 `real-ip`（直连正确、`GEOIP,CN` 可用），
   其余下发 `fake-ip`，客户端拿不到境外域名的真实 IP。没有这个开关就只能二选一
-- `nameserver-policy` 用 `rule-set:` 前缀**直接引用本文件的 39 个 provider** 做分域，
+- `nameserver-policy` 用 `rule-set:` 前缀**直接引用本文件的 38 个 provider** 做分域，
   境外查询写成 `tls://8.8.8.8:853#🚀 节点选择`，DNS 请求本身从代理出去
 
 这套配置是渐进增强的：不开 TUN 时第一层不介入，但第二层照常工作，污染已修好；
